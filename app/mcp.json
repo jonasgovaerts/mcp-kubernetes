@@ -1,0 +1,108 @@
+{
+  "name": "kubernetes-mcp",
+  "description": "A read-only Kubernetes cluster inspection tool using Model Context Protocol.",
+  "version": "0.1.0",
+  "server": {
+    "type": "stdio",
+    "command": "python3",
+    "args": ["kubernetes_mcp_server.py"]
+  },
+  "tools": [
+    {
+      "name": "get_cluster_status",
+      "description": "Get overall cluster status including nodes and namespaces."
+    },
+    {
+      "name": "list_nodes",
+      "description": "List all nodes with their status, capacity, and allocatable resources."
+    },
+    {
+      "name": "list_namespaces",
+      "description": "List all namespaces with their status and age."
+    },
+    {
+      "name": "list_pods",
+      "description": "List pods, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_deployments",
+      "description": "List deployments, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_statefulsets",
+      "description": "List stateful sets, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_daemonsets",
+      "description": "List daemon sets, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_jobs",
+      "description": "List jobs, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_cronjobs",
+      "description": "List cron jobs, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_events",
+      "description": "List recent events, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    }
+  ]
+}

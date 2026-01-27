@@ -1,0 +1,10 @@
+[package]
+requests = "*"
+ujson = "*"
+kubernetes = "*"
+fastmcp = "*"
+
+[requires]
+python_version = "3.14"
+
+[dev-packages]
