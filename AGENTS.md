@@ -1,8 +1,8 @@
 # Kubernetes MCP Agent
 
-A FastMCP-based agent that provides comprehensive Kubernetes cluster inspection capabilities, allowing AI assistants to query cluster status, resources, and logs.
+This agent provides comprehensive Kubernetes cluster inspection capabilities through the FastMCP framework. It allows AI assistants to query cluster status, resources, and logs.
 
-## Features
+## Capabilities
 
 ### Cluster Monitoring
 - Get overall cluster health status
@@ -22,7 +22,7 @@ A FastMCP-based agent that provides comprehensive Kubernetes cluster inspection 
 - List recent cluster events and warnings
 - Retrieve logs from specific pods with configurable line limits
 
-## Usage
+## Usage Examples
 
 ### Basic Agent Setup
 ```bash
@@ -33,11 +33,10 @@ python app/kubernetes_mcp_server.py --host 0.0.0.0 --port 8000
 ### Integration with AI Assistants
 Configure your AI assistant to connect to:
 ```
-http://localhost:8000/mcp
+http://localhost:8000
 ```
 
-## Available Tools
-
+### Available Tools
 1. `get_cluster_status()` - Get overall cluster status
 2. `list_nodes()` - List all nodes with their status and resources
 3. `list_namespaces()` - List all namespaces
@@ -64,19 +63,3 @@ The agent can be configured using command line arguments:
 - Ensure appropriate network security measures are in place
 - Use RBAC permissions appropriately for the Kubernetes service account
 - Consider using HTTPS in production environments
-
-## Example Usage
-
-```bash
-# Start the server
-python app/kubernetes_mcp_server.py --host 0.0.0.0 --port 8000
-
-# In another terminal, you can test with curl
-curl http://localhost:8000/tools/get_cluster_status
-```
-
-## Requirements
-
-- Python 3.7+
-- Kubernetes cluster access
-- Required Python packages listed in requirements.txt or Pipfile

@@ -5,7 +5,7 @@
   "server": {
     "type": "stdio",
     "command": "python3",
-    "args": ["kubernetes_mcp_server.py"]
+    "args": ["app/kubernetes_mcp_server.py"]
   },
   "tools": [
     {
@@ -137,6 +137,22 @@
           "type": "integer",
           "required": false,
           "description": "Number of lines to tail (default: 100)"
+        }
+      ]
+    },
+    {
+      "name": "get_node_metrics",
+      "description": "Get CPU and memory usage for all nodes in the cluster (kubectl top nodes)."
+    },
+    {
+      "name": "get_pod_metrics",
+      "description": "Get CPU and memory usage for pods, optionally filtered by namespace (kubectl top pods).",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
         }
       ]
     }
