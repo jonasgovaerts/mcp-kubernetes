@@ -94,6 +94,42 @@ pip install fastmcp-cli
 fastmcp run kubernetes_mcp_server.py
 ```
 
+## Kubernetes Deployment
+
+The `k8s/` directory contains all necessary files to deploy this MCP server as a Kubernetes service.
+
+### Deployment Files
+
+- **deployment.yaml**: Defines the deployment for the MCP server
+- **service.yaml**: Exposes the MCP server via a ClusterIP service
+- **service-account.yaml**: Creates a dedicated service account
+- **role.yaml**: Defines RBAC role with read-only permissions
+- **role-binding.yaml**: Binds the role to the service account
+
+### Deploying to Kubernetes
+
+```bash
+# Apply all Kubernetes manifests
+kubectl apply -f k8s/
+
+# Verify deployment
+kubectl get pods,svc,sa,role,rolebinding -n default
+
+# Check logs
+kubectl logs -l app=kubernetes-mcp-server
+```
+
+### Customizing the Deployment
+
+You can customize the deployment by modifying the `k8s/deployment.yaml` file:
+
+- Set resource limits and requests
+- Configure environment variables
+- Adjust replica count
+- Change the image tag
+
+For more details, see the [Kubernetes deployment documentation](k8s/README.md).
+
 ## Legacy Usage (Direct Python API)
 
 The original direct Python API is still available:

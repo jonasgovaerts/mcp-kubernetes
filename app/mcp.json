@@ -103,6 +103,42 @@
           "description": "Optional namespace filter"
         }
       ]
+    },
+    {
+      "name": "list_ingresses",
+      "description": "List ingress resources, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "get_pod_logs",
+      "description": "Get logs from a specific pod. Optionally specify namespace and number of lines to tail.",
+      "parameters": [
+        {
+          "name": "pod_name",
+          "type": "string",
+          "required": true,
+          "description": "Name of the pod"
+        },
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        },
+        {
+          "name": "tail_lines",
+          "type": "integer",
+          "required": false,
+          "description": "Number of lines to tail (default: 100)"
+        }
+      ]
     }
   ]
 }

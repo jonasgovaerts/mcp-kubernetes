@@ -326,7 +326,7 @@ class KubernetesMCPServer:
                 cj_list = self.batch_api.list_namespaced_cron_job(namespace).items
             else:
                 cj_list = self.batch_api.list_cron_job_for_all_namespaces().items
-            
+        
             cronjobs = []
             for cj in cj_list:
                 ns = cj.metadata.namespace if namespace is None else namespace
@@ -340,13 +340,288 @@ class KubernetesMCPServer:
                     "age": self._calculate_age(cj.metadata.creation_timestamp),
                     "labels": cj.metadata.labels or {}
                 })
-            
+        
             return cronjobs
         except ApiException as e:
             print(f"API Error getting cron jobs: {e.reason}", file=sys.stderr)
             return []
         except Exception as e:
             print(f"Error getting cron jobs: {e}", file=sys.stderr)
+            return []
+    
+    def get_ingresses(self, namespace: Optional[str] = None) -> List[Dict]:
+        """Get list of ingress resources, optionally filtered by namespace."""
+        if not self.initialized:
+            return []
+        
+        try:
+            # Check if networking.k8s.io/v1 API is available
+            has_networking_api = True
+            try:
+                test_api = client.NetworkingV1Api()
+            except Exception:
+                has_networking_api = False
+            
+            ingresses = []
+            if namespace:
+                if has_networking_api:
+                    ing_list = client.NetworkingV1Api().list_namespaced_ingress(namespace).items
+                else:
+                    # Fallback to extensions/v1beta1 API
+                    try:
+                        ing_list = client.ExtensionsV1beta1Api().list_namespaced_ingress(namespace).items
+                    except Exception:
+                        return []
+            else:
+                if has_networking_api:
+                    ing_list = client.NetworkingV1Api().list_ingress_for_all_namespaces().items
+                else:
+                    # Fallback to extensions/v1beta1 API
+                    try:
+                        ing_list = client.ExtensionsV1beta1Api().list_ingress_for_all_namespaces().items
+                    except Exception:
+                        return []
+            
+            for ing in ing_list:
+                ns = ing.metadata.namespace if namespace is None else namespace
+                
+                # Get rules and paths
+                rules = []
+                for rule in ing.spec.rules or []:
+                    host = rule.host if hasattr(rule, 'host') and rule.host else "*"
+                    http_paths = []
+                    
+                    if hasattr(rule, 'http') and rule.http and hasattr(rule.http, 'paths'):
+                        for path in rule.http.paths:
+                            http_paths.append({
+                                "path": path.path,
+                                "backend_service": f"{path.backend.service_name} ({path.backend.service_port.number if hasattr(path.backend.service_port, 'number') else path.backend.service_port})"
+                            })
+                    
+                    rules.append({
+                        "host": host,
+                        "paths": http_paths
+                    })
+                
+                # Get ingress class
+                ingress_class = ing.spec.ingress_class_name if hasattr(ing.spec, 'ingress_class_name') and ing.spec.ingress_class_name else "N/A"
+            
+                ingresses.append({
+                    "name": ing.metadata.name,
+                    "namespace": ns,
+                    "ingress_class": ingress_class,
+                    "rules": rules,
+                    "tls": len(ing.spec.tls or []) > 0,
+                    "age": self._calculate_age(ing.metadata.creation_timestamp),
+                    "labels": ing.metadata.labels or {}
+                })
+            
+            return ingresses
+        except ApiException as e:
+            print(f"API Error getting ingresses: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting ingresses: {e}", file=sys.stderr)
+            return []
+
+    def get_service_accounts(self, namespace: Optional[str] = None) -> List[Dict]:
+        """Get list of service accounts, optionally filtered by namespace."""
+        if not self.initialized:
+            return []
+        
+        try:
+            if namespace:
+                sa_list = self.core_api.list_namespaced_service_account(namespace).items
+            else:
+                sa_list = self.core_api.list_service_account_for_all_namespaces().items
+            
+            service_accounts = []
+            for sa in sa_list:
+                ns = sa.metadata.namespace if namespace is None else namespace
+                service_accounts.append({
+                    "name": sa.metadata.name,
+                    "namespace": ns,
+                    "secrets": len(sa.secrets or []),
+                    "automount": sa.automount_service_account_token,
+                    "age": self._calculate_age(sa.metadata.creation_timestamp),
+                    "labels": sa.metadata.labels or {}
+                })
+            
+            return service_accounts
+        except ApiException as e:
+            print(f"API Error getting service accounts: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting service accounts: {e}", file=sys.stderr)
+            return []
+    
+    def get_roles(self, namespace: Optional[str] = None) -> List[Dict]:
+        """Get list of roles, optionally filtered by namespace."""
+        if not self.initialized:
+            return []
+        
+        try:
+            if namespace:
+                role_list = self.core_api.list_namespaced_role(namespace).items
+            else:
+                # Roles are namespaced, so we need to get them from all namespaces
+                roles = []
+                namespaces_resp = self.core_api.list_namespace()
+                for ns in namespaces_resp.items:
+                    try:
+                        ns_roles = self.core_api.list_namespaced_role(ns.metadata.name).items
+                        roles.extend(ns_roles)
+                    except Exception:
+                        continue
+            
+            result = []
+            for role in role_list if namespace else roles:
+                ns = role.metadata.namespace if namespace is None else namespace
+                result.append({
+                    "name": role.metadata.name,
+                    "namespace": ns,
+                    "rules": [
+                        {
+                            "api_groups": rule.rules[i].api_groups,
+                            "resources": rule.rules[i].resources,
+                            "verbs": rule.rules[i].verbs
+                        }
+                        for i in range(len(role.rules))
+                    ],
+                    "age": self._calculate_age(role.metadata.creation_timestamp),
+                    "labels": role.metadata.labels or {}
+                })
+            
+            return result
+        except ApiException as e:
+            print(f"API Error getting roles: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting roles: {e}", file=sys.stderr)
+            return []
+    
+    def get_role_bindings(self, namespace: Optional[str] = None) -> List[Dict]:
+        """Get list of role bindings, optionally filtered by namespace."""
+        if not self.initialized:
+            return []
+        
+        try:
+            if namespace:
+                rb_list = self.core_api.list_namespaced_role_binding(namespace).items
+            else:
+                # RoleBindings are namespaced, so we need to get them from all namespaces
+                rbs = []
+                namespaces_resp = self.core_api.list_namespace()
+                for ns in namespaces_resp.items:
+                    try:
+                        ns_rbs = self.core_api.list_namespaced_role_binding(ns.metadata.name).items
+                        rbs.extend(ns_rbs)
+                    except Exception:
+                        continue
+            
+            result = []
+            for rb in rb_list if namespace else rbs:
+                ns = rb.metadata.namespace if namespace is None else namespace
+                result.append({
+                    "name": rb.metadata.name,
+                    "namespace": ns,
+                    "role_ref": {
+                        "kind": rb.role_ref.kind,
+                        "name": rb.role_ref.name,
+                        "api_group": rb.role_ref.apigroup
+                    } if rb.role_ref else None,
+                    "subjects": [
+                        {
+                            "kind": sub.kind,
+                            "name": sub.name,
+                            "namespace": getattr(sub, 'namespace', None),
+                            "api_group": getattr(sub, 'apigroup', None)
+                        }
+                        for sub in rb.subjects
+                    ],
+                    "age": self._calculate_age(rb.metadata.creation_timestamp),
+                    "labels": rb.metadata.labels or {}
+                })
+            
+            return result
+        except ApiException as e:
+            print(f"API Error getting role bindings: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting role bindings: {e}", file=sys.stderr)
+            return []
+    
+    def get_cluster_roles(self) -> List[Dict]:
+        """Get list of all cluster roles."""
+        if not self.initialized:
+            return []
+        
+        try:
+            rbac_api = client.RbacAuthorizationV1Api()
+            cr_list = rbac_api.list_cluster_role().items
+            
+            result = []
+            for cr in cr_list:
+                result.append({
+                    "name": cr.metadata.name,
+                    "rules": [
+                        {
+                            "api_groups": rule.api_groups,
+                            "resources": rule.resources,
+                            "verbs": rule.verbs,
+                            "resource_names": getattr(rule, 'resource_names', [])
+                        }
+                        for rule in cr.rules
+                    ],
+                    "age": self._calculate_age(cr.metadata.creation_timestamp),
+                    "labels": cr.metadata.labels or {}
+                })
+            
+            return result
+        except ApiException as e:
+            print(f"API Error getting cluster roles: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting cluster roles: {e}", file=sys.stderr)
+            return []
+    
+    def get_cluster_role_bindings(self) -> List[Dict]:
+        """Get list of all cluster role bindings."""
+        if not self.initialized:
+            return []
+        
+        try:
+            rbac_api = client.RbacAuthorizationV1Api()
+            crb_list = rbac_api.list_cluster_role_binding().items
+            
+            result = []
+            for crb in crb_list:
+                result.append({
+                    "name": crb.metadata.name,
+                    "role_ref": {
+                        "kind": crb.role_ref.kind,
+                        "name": crb.role_ref.name,
+                        "api_group": crb.role_ref.apigroup
+                    } if crb.role_ref else None,
+                    "subjects": [
+                        {
+                            "kind": sub.kind,
+                            "name": sub.name,
+                            "namespace": getattr(sub, 'namespace', None),
+                            "api_group": getattr(sub, 'apigroup', None)
+                        }
+                        for sub in crb.subjects
+                    ],
+                    "age": self._calculate_age(crb.metadata.creation_timestamp),
+                    "labels": crb.metadata.labels or {}
+                })
+            
+            return result
+        except ApiException as e:
+            print(f"API Error getting cluster role bindings: {e.reason}", file=sys.stderr)
+            return []
+        except Exception as e:
+            print(f"Error getting cluster role bindings: {e}", file=sys.stderr)
             return []
     
     def get_events(self, namespace: Optional[str] = None) -> List[Dict]:
@@ -630,6 +905,11 @@ def register_mcp_tools(server):
     def list_cronjobs(namespace: Optional[str] = None):
         """List cron jobs, optionally filtered by namespace."""
         return server.get_cronjobs(namespace)
+    
+    @server.mcp.tool
+    def list_ingresses(namespace: Optional[str] = None):
+        """List ingress resources, optionally filtered by namespace."""
+        return server.get_ingresses(namespace)
     
     @server.mcp.tool
     def list_events(namespace: Optional[str] = None):
