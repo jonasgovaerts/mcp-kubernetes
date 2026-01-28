@@ -155,6 +155,22 @@
           "description": "Optional namespace filter"
         }
       ]
+    },
+    {
+      "name": "list_persistent_volumes",
+      "description": "List all persistent volumes with their status, capacity, and storage class."
+    },
+    {
+      "name": "list_persistent_volume_claims",
+      "description": "List persistent volume claims with their status, requested size, and used storage. Optionally filter by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
     }
   ]
 }

@@ -454,6 +454,65 @@ class KubernetesMCPServer:
             print(f"Error getting node metrics: {e}", file=sys.stderr)
             return []
 
+    def get_persistent_volumes(self) -> List[Dict[str, Any]]:
+        """Get list of all persistent volumes with their status and capacity."""
+        try:
+            pvs = self.core_api.list_persistent_volume().items
+            
+            result = []
+            for pv in pvs:
+                storage_class = pv.spec.storage_class_name if pv.spec else "default"
+                capacity = pv.spec.capacity.get("storage", "Unknown") if pv.spec and pv.spec.capacity else "Unknown"  # noqa: E501
+                
+                result.append({
+                    "name": pv.metadata.name,
+                    "status": pv.status.phase if pv.status else "Pending",
+                    "capacity": capacity,
+                    "storage_class": storage_class,
+                    "access_modes": pv.spec.access_modes if pv.spec and pv.spec.access_modes else [],  # noqa: E501
+                    "age": self._calculate_age(pv.metadata.creation_timestamp),
+                    "reclaim_policy": pv.spec.persistent_volume_reclaim_policy if pv.spec else "Retain"  # noqa: E501
+                })
+            
+            return sorted(result, key=lambda x: x["name"])
+        except Exception as e:
+            print(f"Error getting persistent volumes: {e}", file=sys.stderr)
+            return []
+
+    def get_persistent_volume_claims(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:  # noqa: E501
+        """Get list of persistent volume claims with their status and usage."""
+        try:
+            if namespace:
+                pvcs = self.core_api.list_namespaced_persistent_volume_claim(namespace).items  # noqa: E501
+            else:
+                pvcs = self.core_api.list_persistent_volume_claim_for_all_namespaces().items  # noqa: E501
+            
+            result = []
+            for pvc in pvcs:
+                status = "Bound" if pvc.status and pvc.status.phase == "Bound" else pvc.status.phase if pvc.status else "Pending"  # noqa: E501
+                
+                request_size = pvc.spec.resources.requests.get("storage", "Unknown") if pvc.spec and pvc.spec.resources and pvc.spec.resources.requests else "Unknown"  # noqa: E501
+                
+                used_size = "N/A"
+                if pvc.status and hasattr(pvc.status, 'capacity') and pvc.status.capacity:  # noqa: E501
+                    used_size = pvc.status.capacity.get("storage", "N/A")
+                
+                result.append({
+                    "name": pvc.metadata.name,
+                    "namespace": pvc.metadata.namespace,
+                    "status": status,
+                    "volume": pvc.spec.volume_name if pvc.spec else "N/A",
+                    "storage_class": pvc.spec.storage_class_name if pvc.spec else "default",  # noqa: E501
+                    "requested_size": request_size,
+                    "used_size": used_size,
+                    "age": self._calculate_age(pvc.metadata.creation_timestamp)
+                })
+            
+            return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except Exception as e:
+            print(f"Error getting persistent volume claims: {e}", file=sys.stderr)
+            return []
+
     def get_pod_metrics(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get metrics for pods, optionally filtered by namespace."""
         try:
@@ -575,6 +634,16 @@ def register_mcp_tools(server):
     def get_pod_metrics(namespace: Optional[str] = None):
         """Get CPU and memory usage for pods, optionally filtered by namespace (kubectl top pods)."""
         return server.get_pod_metrics(namespace)
+
+    @server.mcp.tool
+    def list_persistent_volumes():
+        """List all persistent volumes with their status, capacity, and storage class."""
+        return server.get_persistent_volumes()
+
+    @server.mcp.tool
+    def list_persistent_volume_claims(namespace: Optional[str] = None):
+        """List persistent volume claims with their status, requested size, and used storage. Optionally filter by namespace."""
+        return server.get_persistent_volume_claims(namespace)
 
 
 def main():
