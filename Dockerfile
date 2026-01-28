@@ -21,4 +21,6 @@ USER appuser
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "kubernetes_mcp_server.py"]
+ENTRYPOINT ["python", "kubernetes_mcp_server.py"]
+
+CMD []
