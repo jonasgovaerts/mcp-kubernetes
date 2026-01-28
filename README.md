@@ -1,184 +1,140 @@
 # Kubernetes MCP Server
 
-A read-only Kubernetes cluster inspection tool using the Model Context Protocol (MCP) pattern and the official Kubernetes Python client.
+This is a Kubernetes MCP (Model Control Protocol) server that provides an interface for interacting with Kubernetes clusters through the MCP protocol. It allows you to query and manage Kubernetes resources using MCP-compatible clients.
 
 ## Features
 
-- **Cluster-Level Status**: Version, API server health, node readiness
-- **Node Inspection**: Capacity vs allocatable resources, conditions
-- **Namespace Management**: List and status
-- **Workload Discovery**: Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs
-- **Application Health**: Group by namespace/labels, summarize health
-- **Events & Diagnostics**: Recent warnings/errors, pod readiness issues
+- Connects to Kubernetes clusters
+- Provides MCP endpoints for cluster management
+- Exposes Kubernetes resources through MCP protocol:
+  - Cluster status and overview
+  - Nodes information
+  - Namespaces listing
+  - Pods monitoring
+  - Deployments, StatefulSets, DaemonSets
+  - Jobs and CronJobs
+  - Ingress resources
+  - Events monitoring
+  - Pod logs retrieval
+- Dockerized for easy deployment
 
-## Safety Constraints
+## Prerequisites
 
-✅ **Read-only operations** - No create/update/delete operations
-✅ **RBAC aware** - Gracefully handles permission errors
-✅ **No shell execution** - Only uses Kubernetes APIs
-✅ **No data fabrication** - Returns only real cluster state
+- Python 3.12
+- Docker (for containerized deployment)
+- Access to a Kubernetes cluster with appropriate permissions
+- Kubernetes configuration file (kubeconfig) accessible to the server
 
 ## Installation
 
-### Prerequisites
-- Python 3.8+
-- pipenv
+### Local Development
 
-### Setup
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd kubernetes-mcp
+```
+
+2. Install dependencies:
+```bash
+pip install -r app/requirements
+```
+
+3. Run the server:
+```bash
+python3 app/kubernetes_mcp_server.py
+```
+
+### Docker Deployment
+
+Build and run with Docker:
+```bash
+docker build -t kubernetes-mcp-server .
+docker run -p 8000:8000 kubernetes-mcp-server
+```
+
+For running with custom kubeconfig:
+```bash
+docker run -p 8000:8000 \
+  -v /path/to/your/kubeconfig:/kubeconfig \
+  -e KUBECONFIG=/kubeconfig \
+  kubernetes-mcp-server
+```
+
+## Usage
+
+The server will start on port 8000 and provide MCP endpoints for Kubernetes cluster interaction.
+
+### Default Endpoints
+
+Once running, the server exposes the following MCP tools:
+
+- `get_cluster_status` - Get overall cluster status including nodes and namespaces
+- `list_nodes` - List all nodes with their status, capacity, and allocatable resources
+- `list_namespaces` - List all namespaces with their status and age
+- `list_pods` - List pods, optionally filtered by namespace
+- `list_deployments` - List deployments, optionally filtered by namespace
+- `list_statefulsets` - List stateful sets, optionally filtered by namespace
+- `list_daemonsets` - List daemon sets, optionally filtered by namespace
+- `list_jobs` - List jobs, optionally filtered by namespace
+- `list_cronjobs` - List cron jobs, optionally filtered by namespace
+- `list_ingresses` - List ingress resources, optionally filtered by namespace
+- `list_events` - List recent events, optionally filtered by namespace
+- `get_pod_logs` - Get logs from a specific pod
+
+### Running with Custom Configuration
 
 ```bash
-# Install pipenv if not available
-pip install pipenv
-
-# Create and activate virtual environment
-pipenv --python 3.x
-
-# Install dependencies
-pipenv install
-```
-
-## Usage as MCP Server
-
-This server implements the Model Context Protocol (MCP) using FastMCP.
-
-### Running the MCP Server
-
-```bash
-# Run the MCP server (stdio transport)
-pipenv run python kubernetes_mcp_server.py
-```
-
-### Available Tools
-
-The server provides 10 tools for Kubernetes inspection:
-
-1. **get_cluster_status** - Get overall cluster health and status
-2. **list_nodes** - List all nodes with capacity and allocatable resources
-3. **list_namespaces** - List all namespaces
-4. **list_pods** - List pods (with optional namespace filter)
-5. **list_deployments** - List deployments (with optional namespace filter)
-6. **list_statefulsets** - List stateful sets (with optional namespace filter)
-7. **list_daemonsets** - List daemon sets (with optional namespace filter)
-8. **list_jobs** - List jobs (with optional namespace filter)
-9. **list_cronjobs** - List cron jobs (with optional namespace filter)
-10. **list_events** - List recent events (with optional namespace filter)
-
-### MCP Configuration
-
-An `mcp.json` configuration file is provided for integration with MCP clients:
-
-```json
-{
-  "name": "kubernetes-mcp",
-  "description": "Kubernetes cluster inspection tool",
-  "version": "0.1.0",
-  "server": {
-    "type": "stdio",
-    "command": "python3",
-    "args": ["kubernetes_mcp_server.py"]
-  }
-}
-```
-
-### Using with MCP Clients
-
-You can use this server with any MCP-compatible client (VS Code, Cursor, Windsurf, etc.) by pointing to the `mcp.json` configuration file.
-
-### Testing with FastMCP CLI
-
-```bash
-# Install fastmcp-cli
-pip install fastmcp-cli
-
-# Run the MCP server and interact with it
-fastmcp run kubernetes_mcp_server.py
-```
-
-## Kubernetes Deployment
-
-The `k8s/` directory contains all necessary files to deploy this MCP server as a Kubernetes service.
-
-### Deployment Files
-
-- **deployment.yaml**: Defines the deployment for the MCP server
-- **service.yaml**: Exposes the MCP server via a ClusterIP service
-- **service-account.yaml**: Creates a dedicated service account
-- **role.yaml**: Defines RBAC role with read-only permissions
-- **role-binding.yaml**: Binds the role to the service account
-
-### Deploying to Kubernetes
-
-```bash
-# Apply all Kubernetes manifests
-kubectl apply -f k8s/
-
-# Verify deployment
-kubectl get pods,svc,sa,role,rolebinding -n default
-
-# Check logs
-kubectl logs -l app=kubernetes-mcp-server
-```
-
-### Customizing the Deployment
-
-You can customize the deployment by modifying the `k8s/deployment.yaml` file:
-
-- Set resource limits and requests
-- Configure environment variables
-- Adjust replica count
-- Change the image tag
-
-For more details, see the [Kubernetes deployment documentation](k8s/README.md).
-
-## Legacy Usage (Direct Python API)
-
-The original direct Python API is still available:
-
-```python
-from kubernetes_mcp_server import KubernetesMCPServer
-
-server = KubernetesMCPServer()
-if server.initialize():
-    # Get cluster status
-    status = server.get_cluster_status()
-    
-    # List nodes
-    nodes = server.get_nodes()
-    
-    # List pods in specific namespace
-    pods = server.get_pods(namespace="default")
+python3 app/kubernetes_mcp_server.py --host 0.0.0.0 --port 8000 --kubeconfig /path/to/kubeconfig
 ```
 
 ## Configuration
 
-The server automatically:
-1. Tries to use in-cluster config when running inside Kubernetes
-2. Falls back to `~/.kube/config` for local development
-3. Handles API version differences gracefully
+The server can be configured through:
+1. Command-line arguments:
+   - `--host`: Host to bind to (default: 0.0.0.0)
+   - `--port`: Port to listen on (default: 8000)
+   - `--kubeconfig`: Path to kubeconfig file
 
-## Dependencies
+2. Environment variables:
+   - `KUBECONFIG`: Path to kubeconfig file
+   - `MCP_SERVER_HOST`: Host to bind to
+   - `MCP_SERVER_PORT`: Port to listen on
 
-- Python 3.8+
-- kubernetes >= 25.0.0
-- requests
-- ujson
-- fastmcp (for MCP protocol support)
+## MCP Client Integration
 
-Managed via Pipenv.
+This server is designed to work with MCP-compatible clients. The tools exposed by this server can be used in an MCP client configuration like:
+
+```json
+{
+  "tools": [
+    {
+      "name": "get_cluster_status",
+      "description": "Get overall cluster status including nodes and namespaces"
+    },
+    {
+      "name": "list_nodes",
+      "description": "List all nodes with their status, capacity, and allocatable resources"
+    }
+  ]
+}
+```
 
 ## Development
 
-```bash
-# Install dependencies for development
-pipenv install --dev
+To contribute:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests if applicable
+5. Submit a pull request
 
-# Run tests
-pipenv run python test_connection.py
+## Security Considerations
 
-# Format code
-pipenv run black kubernetes_mcp_server.py
-```
+- The server runs as a non-root user in the Docker container for security
+- Access to Kubernetes cluster is controlled by the kubeconfig file permissions
+- The server should be protected by appropriate network security measures
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License.

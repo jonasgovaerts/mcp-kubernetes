@@ -395,7 +395,7 @@ class KubernetesMCPServer:
                         for path in rule.http.paths:
                             http_paths.append({
                                 "path": path.path,
-                                "backend_service": f"{path.backend.service_name} ({path.backend.service_port.number if hasattr(path.backend.service_port, 'number') else path.backend.service_port})"
+                                "backend_service": f"{path.backend.service.name} ({path.backend.service.port.number if hasattr(path.backend.service.port, 'number') else path.backend.service.port})"
                             })
                     
                     rules.append({
@@ -482,11 +482,11 @@ class KubernetesMCPServer:
                     "namespace": ns,
                     "rules": [
                         {
-                            "api_groups": rule.rules[i].api_groups,
-                            "resources": rule.rules[i].resources,
-                            "verbs": rule.rules[i].verbs
+                            "api_groups": rule.api_groups,
+                            "resources": rule.resources,
+                            "verbs": rule.verbs
                         }
-                        for i in range(len(role.rules))
+                        for rule in role.rules
                     ],
                     "age": self._calculate_age(role.metadata.creation_timestamp),
                     "labels": role.metadata.labels or {}

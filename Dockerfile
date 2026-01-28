@@ -1,19 +1,24 @@
-# Use an official Python runtime as a parent image
 FROM python:3.12-slim
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY ./app/ /app/
+# Copy requirements first (for better caching)
+COPY app/requirements .
 
-# Install any needed packages specified in requirements
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements
 
-# Make port 8000 available to the world outside this container
+# Copy application code
+COPY app/ .
+
+# Create non-root user
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Expose port
 EXPOSE 8000
 
-# Run kubernetes_mcp_server.py when the container launches
-ENTRYPOINT ["/usr/bin/env", "python3", "kubernetes_mcp_server.py"]
-# CMD allows passing additional arguments to the ENTRYPOINT
-CMD []
+# Command to run the application
+CMD ["python", "kubernetes_mcp_server.py"]
