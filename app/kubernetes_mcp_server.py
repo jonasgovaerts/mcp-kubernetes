@@ -551,6 +551,84 @@ class KubernetesMCPServer:
             print(f"Error getting pod metrics: {e}", file=sys.stderr)
             return []
 
+    def get_certificates(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get list of certificates from cert-manager, optionally filtered by namespace."""
+        try:
+            if namespace:
+                certificates = self.custom_objects_api.list_namespaced_custom_object(
+                    group="cert-manager.io",
+                    version="v1",
+                    plural="certificates",
+                    namespace=namespace
+                )
+            else:
+                certificates = self.custom_objects_api.list_cluster_custom_object(
+                    group="cert-manager.io",
+                    version="v1",
+                    plural="certificates"
+                )
+            
+            result = []
+            for cert in certificates.get("items", []):
+                status = cert.get("status", {})
+                conditions = status.get("conditions", [])
+                
+                # Get certificate readiness
+                ready = False
+                reason = "Unknown"
+                message = "N/A"
+                for condition in conditions:
+                    if condition.get("type") == "Ready":
+                        ready = condition.get("status") == "True"
+                        reason = condition.get("reason", "Unknown")
+                        message = condition.get("message", "N/A")
+                        break
+                
+                # Get certificate expiration
+                not_after = status.get("notAfter", "Unknown")
+                expiration_days = self._calculate_certificate_expiration(not_after)
+                
+                result.append({
+                    "name": cert["metadata"]["name"],
+                    "namespace": cert["metadata"]["namespace"],
+                    "ready": ready,
+                    "reason": reason,
+                    "message": message,
+                    "issuer": cert.get("spec", {}).get("issuerRef", {}).get("name", "N/A"),
+                    "secret_name": cert.get("spec", {}).get("secretName", "N/A"),
+                    "duration": cert.get("spec", {}).get("duration", "N/A"),
+                    "not_after": not_after,
+                    "expiration_days": expiration_days,
+                    "age": self._calculate_age(cert["metadata"]["creationTimestamp"])
+                })
+            
+            return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except Exception as e:
+            print(f"Error getting certificates: {e}", file=sys.stderr)
+            return []
+
+    def _calculate_certificate_expiration(self, not_after: str) -> Optional[str]:
+        """Calculate days until certificate expiration."""
+        if not not_after or not_after == "Unknown":
+            return None
+        try:
+            from datetime import datetime
+            # Parse the RFC3339 timestamp
+            dt = datetime.fromisoformat(not_after.replace('Z', '+00:00').replace('+00:00', ''))
+            now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+            delta = dt - now
+            
+            if delta.days < 0:
+                return "Expired"
+            elif delta.days == 0:
+                return "Today"
+            elif delta.days == 1:
+                return "1 day"
+            else:
+                return f"{delta.days} days"
+        except Exception:
+            return None
+
 
 def register_mcp_tools(server):
     """Register all Kubernetes tools with FastMCP."""
@@ -644,6 +722,11 @@ def register_mcp_tools(server):
     def list_persistent_volume_claims(namespace: Optional[str] = None):
         """List persistent volume claims with their status, requested size, and used storage. Optionally filter by namespace."""
         return server.get_persistent_volume_claims(namespace)
+
+    @server.mcp.tool
+    def list_certificates(namespace: Optional[str] = None):
+        """List certificates from cert-manager with their status and expiration. Optionally filter by namespace."""
+        return server.get_certificates(namespace)
 
 
 def main():

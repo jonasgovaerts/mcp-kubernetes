@@ -171,6 +171,18 @@
           "description": "Optional namespace filter"
         }
       ]
+    },
+    {
+      "name": "list_certificates",
+      "description": "List certificates from cert-manager with their status, expiration date, and issuer information. Optionally filter by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
     }
   ]
 }
