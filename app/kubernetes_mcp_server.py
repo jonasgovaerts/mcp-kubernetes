@@ -44,6 +44,7 @@ class KubernetesMCPServer:
             self.core_api = client.CoreV1Api()
             self.apps_api = client.AppsV1Api()
             self.batch_api = client.BatchV1Api()
+            self.policy_api = client.PolicyV1Api()
             self.custom_objects_api = client.CustomObjectsApi()
             return True
         except Exception as e:
@@ -317,6 +318,33 @@ class KubernetesMCPServer:
             print(f"Error getting events: {e}", file=sys.stderr)
             return []
 
+    def get_pod_disruption_budgets(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get list of pod disruption budgets, optionally filtered by namespace."""
+        try:
+            if namespace:
+                pdb_list = self.policy_api.list_namespaced_pod_disruption_budget(namespace).items
+            else:
+                pdb_list = self.policy_api.list_pod_disruption_budget_for_all_namespaces().items
+            
+            result = []
+            for pdb in pdb_list:
+                min_available = pdb.spec.min_available if pdb.spec else None
+                max_unavailable = pdb.spec.max_unavailable if pdb.spec else None
+                
+                result.append({
+                    "name": pdb.metadata.name,
+                    "namespace": pdb.metadata.namespace,
+                    "min_available": min_available,
+                    "max_unavailable": max_unavailable,
+                    "age": self._calculate_age(pdb.metadata.creation_timestamp),
+                    "allowed_disruptions": pdb.status.allowed_disruptions if pdb.status else 0
+                })
+            
+            return result
+        except Exception as e:
+            print(f"Error getting pod disruption budgets: {e}", file=sys.stderr)
+            return []
+
     def get_pod_logs(self, pod_name: str, namespace: Optional[str] = None, tail_lines: int = 100) -> str:  # noqa: E501
         """Get logs from a specific pod."""
         try:
@@ -551,6 +579,39 @@ class KubernetesMCPServer:
             print(f"Error getting pod metrics: {e}", file=sys.stderr)
             return []
 
+    def get_network_attachment_definitions(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:  # noqa: E501
+        """Get list of network attachment definitions, optionally filtered by namespace."""
+        try:
+            if namespace:
+                nads = self.custom_objects_api.list_namespaced_custom_object(
+                    group="k8s.cni.cncf.io",
+                    version="v1",
+                    plural="networkattachmentdefinitions",
+                    namespace=namespace
+                )
+            else:
+                nads = self.custom_objects_api.list_cluster_custom_object(
+                    group="k8s.cni.cncf.io",
+                    version="v1",
+                    plural="networkattachmentdefinitions"
+                )
+            
+            result = []
+            for nad in nads.get("items", []):
+                config = nad.get("spec", {}).get("config", "N/A")
+                
+                result.append({
+                    "name": nad["metadata"]["name"],
+                    "namespace": nad["metadata"]["namespace"],
+                    "config": config,
+                    "age": self._calculate_age(nad["metadata"]["creationTimestamp"])
+                })
+            
+            return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except Exception as e:
+            print(f"Error getting network attachment definitions: {e}", file=sys.stderr)
+            return []
+
     def get_certificates(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get list of certificates from cert-manager, optionally filtered by namespace."""
         try:
@@ -727,6 +788,16 @@ def register_mcp_tools(server):
     def list_certificates(namespace: Optional[str] = None):
         """List certificates from cert-manager with their status and expiration. Optionally filter by namespace."""
         return server.get_certificates(namespace)
+
+    @server.mcp.tool
+    def list_network_attachment_definitions(namespace: Optional[str] = None):
+        """List network attachment definitions from the CNI, optionally filtered by namespace."""
+        return server.get_network_attachment_definitions(namespace)
+
+    @server.mcp.tool
+    def list_pod_disruption_budgets(namespace: Optional[str] = None):
+        """List pod disruption budgets, optionally filtered by namespace."""
+        return server.get_pod_disruption_budgets(namespace)
 
 
 def main():

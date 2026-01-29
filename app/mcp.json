@@ -183,6 +183,30 @@
           "description": "Optional namespace filter"
         }
       ]
+    },
+    {
+      "name": "list_pod_disruption_budgets",
+      "description": "List pod disruption budgets, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
+    },
+    {
+      "name": "list_network_attachment_definitions",
+      "description": "List network attachment definitions from the CNI, optionally filtered by namespace.",
+      "parameters": [
+        {
+          "name": "namespace",
+          "type": "string",
+          "required": false,
+          "description": "Optional namespace filter"
+        }
+      ]
     }
   ]
 }

@@ -19,6 +19,8 @@ This agent provides comprehensive Kubernetes cluster inspection capabilities thr
 - List ingress resources (with optional namespace filtering)
 - List persistent volumes with their status, capacity, and storage class
 - List persistent volume claims with their status, requested size, and used storage (optionally filtered by namespace)
+- List pod disruption budgets (with optional namespace filtering)
+- List network attachment definitions (with optional namespace filtering)
 
 ### Event & Log Management
 - List recent cluster events and warnings
@@ -53,6 +55,8 @@ http://localhost:8000
 12. `get_pod_logs(pod_name, namespace, tail_lines)` - Get logs from a specific pod
 13. `list_persistent_volumes()` - List all persistent volumes with their status, capacity, and storage class
 14. `list_persistent_volume_claims(namespace)` - List persistent volume claims with their status, requested size, and used storage (optionally filtered by namespace)
+15. `list_pod_disruption_budgets(namespace)` - List pod disruption budgets (optionally filtered by namespace)
+16. `list_network_attachment_definitions(namespace)` - List network attachment definitions from the CNI (optionally filtered by namespace)
 
 ## Configuration
 
