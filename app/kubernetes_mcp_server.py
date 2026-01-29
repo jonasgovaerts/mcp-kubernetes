@@ -586,14 +586,14 @@ class KubernetesMCPServer:
                 nads = self.custom_objects_api.list_namespaced_custom_object(
                     group="k8s.cni.cncf.io",
                     version="v1",
-                    plural="networkattachmentdefinitions",
+                    plural="network-attachment-definitions",
                     namespace=namespace
                 )
             else:
                 nads = self.custom_objects_api.list_cluster_custom_object(
                     group="k8s.cni.cncf.io",
                     version="v1",
-                    plural="networkattachmentdefinitions"
+                    plural="network-attachment-definitions"
                 )
             
             result = []
@@ -753,16 +753,6 @@ def register_mcp_tools(server):
     def get_pod_logs(pod_name: str, namespace: Optional[str] = None, tail_lines: int = 100):
         """Get logs from a specific pod. Optionally specify namespace and number of lines to tail."""
         return server.get_pod_logs(pod_name, namespace, tail_lines)
-
-    @server.mcp.tool
-    def get_node_metrics():
-        """Get CPU and memory usage for all nodes in the cluster (kubectl top nodes)."""
-        return server.get_node_metrics()
-
-    @server.mcp.tool
-    def get_pod_metrics(namespace: Optional[str] = None):
-        """Get CPU and memory usage for pods, optionally filtered by namespace (kubectl top pods)."""
-        return server.get_pod_metrics(namespace)
 
     @server.mcp.tool
     def get_node_metrics():
