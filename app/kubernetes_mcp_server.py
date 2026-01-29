@@ -337,7 +337,7 @@ class KubernetesMCPServer:
                     "min_available": min_available,
                     "max_unavailable": max_unavailable,
                     "age": self._calculate_age(pdb.metadata.creation_timestamp),
-                    "allowed_disruptions": pdb.status.allowed_disruptions if pdb.status else 0
+                    "allowed_disruptions": pdb.status.disruptions_allowed if pdb.status else 0
                 })
             
             return result
