@@ -31,6 +31,7 @@ class KubernetesMCPServer:
         self.apps_api = None
         self.batch_api = None
         self.custom_objects_api = None
+        self.networking_api = None
         self.mcp = FastMCP(name="kubernetes-mcp")
 
     def initialize(self) -> bool:
@@ -46,6 +47,7 @@ class KubernetesMCPServer:
             self.batch_api = client.BatchV1Api()
             self.policy_api = client.PolicyV1Api()
             self.custom_objects_api = client.CustomObjectsApi()
+            self.networking_api = client.NetworkingV1Api()
             return True
         except Exception as e:
             print(f"Failed to initialize Kubernetes client: {e}", file=sys.stderr)
@@ -239,13 +241,11 @@ class KubernetesMCPServer:
 
     def get_cronjobs(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get list of cron jobs, optionally filtered by namespace."""
-        try:
-            from kubernetes import client as batchv1beta1
-            
+        try:           
             if namespace:
-                cronjobs = batchv1beta1.BatchV1beta1Api().list_namespaced_cron_job(namespace).items  # noqa: E501
+                cronjobs = self.batch_api.list_namespaced_cron_job(namespace).items  # noqa: E501
             else:
-                cronjobs = batchv1beta1.BatchV1beta1Api().list_cron_job_for_all_namespaces().items  # noqa: E501
+                cronjobs = self.batch_api.list_cron_job_for_all_namespaces().items  # noqa: E501
             
             result = []
             for cj in cronjobs:
@@ -264,13 +264,11 @@ class KubernetesMCPServer:
 
     def get_ingresses(self, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get list of ingress resources, optionally filtered by namespace."""
-        try:
-            from kubernetes import client as networkingv1
-            
+        try:           
             if namespace:
-                ingresses = networkingv1.NetworkingV1Api().list_namespaced_ingress(namespace).items  # noqa: E501
+                ingresses = self.networking_api.list_namespaced_ingress(namespace).items  # noqa: E501
             else:
-                ingresses = networkingv1.NetworkingV1Api().list_ingress_for_all_namespaces().items  # noqa: E501
+                ingresses = self.networking_api.list_ingress_for_all_namespaces().items  # noqa: E501
             
             result = []
             for ing in ingresses:
@@ -805,7 +803,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     register_mcp_tools(server)
-    print(f"\nStarting Kubernetes MCP Server on {args.host}:{args.port}")
+    print(f"\nStarting Kubernetes MCP Server on {args.host}:{args.port}/mcp")
     print("Use this URL in your MCP client configuration:")
-    print(f"  http://{args.host}:{args.port}")
+    print(f"  http://{args.host}:{args.port}/mcp")
     server.mcp.run(transport="streamable-http", host=args.host, port=args.port)
