@@ -205,7 +205,6 @@ def register_mcp_tools(server: KubernetesMCPServer):
         return server.cni_resources.inspect_whereabouts_networking()
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Kubernetes MCP Server")
     parser.add_argument("--kubeconfig", help="Path to kubeconfig file")
