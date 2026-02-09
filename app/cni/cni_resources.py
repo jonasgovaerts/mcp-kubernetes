@@ -223,7 +223,10 @@ class CniResources:
                                     "resource_type": "IPPool",
                                     "resource_name": pool_name,
                                     "namespace": namespace,
-                                    "message": f"IPPool {pool_name} CIDR {cidr} is exhausted ({utilization['utilization_percent']}% utilized)",
+                                    "message": (
+                                        f"IPPool {pool_name} CIDR {cidr} is exhausted "
+                                        f"({utilization['utilization_percent']}% utilized)"
+                                    ),
                                     "remediation": f"Add more CIDRs to IPPool {pool_name} or expand the prefix.",
                                 }
                             )
@@ -276,7 +279,10 @@ class CniResources:
                             "resource_type": "OverlappingRangeIPReservation",
                             "resource_name": res_name,
                             "namespace": namespace,
-                            "message": f"OverlappingRangeIPReservation {res_name} is stale (age: {reservation.get('age', 'unknown')})",
+                            "message": (
+                                f"OverlappingRangeIPReservation {res_name} is stale "
+                                f"(age: {reservation.get('age', 'unknown')})"
+                            ),
                             "remediation": f"Investigate and remove stale OverlappingRangeIPReservation {res_name}",
                         }
                     )
@@ -318,7 +324,10 @@ class CniResources:
                                             "resource_type": "OverlappingRangeIPReservation",
                                             "resource_name": res_name,
                                             "namespace": namespace,
-                                            "message": f"Reservation {res_name} CIDR {res_cidr} is in IPPool {pool_name} CIDR {cidr}",
+                                            "message": (
+                                                f"Reservation {res_name} CIDR {res_cidr} is in IPPool "
+                                                f"{pool_name} CIDR {cidr}"
+                                            ),
                                             "remediation": f"Verify this overlap for {res_name} is intentional.",
                                         }
                                     )
@@ -331,8 +340,14 @@ class CniResources:
                                             "resource_type": "OverlappingRangeIPReservation",
                                             "resource_name": res_name,
                                             "namespace": namespace,
-                                            "message": f"Reservation {res_name} CIDR {res_cidr} overlaps with IPPool {pool_name} CIDR {cidr}",
-                                            "remediation": f"Adjust CIDRs for {res_name} to be fully contained in the IPPool.",
+                                            "message": (
+                                                f"Reservation {res_name} CIDR {res_cidr} overlaps with "
+                                                f"IPPool {pool_name} CIDR {cidr}"
+                                            ),
+                                            "remediation": (
+                                                f"Adjust CIDRs for {res_name} to be fully contained in "
+                                                "the IPPool."
+                                            ),
                                         }
                                     )
 

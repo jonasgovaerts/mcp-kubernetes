@@ -47,7 +47,10 @@ class CertificateResources:
                 expiration_days = calculate_certificate_expiration(not_after)
 
                 logger.debug(
-                    f"Cert {cert['metadata']['namespace']}/{cert['metadata']['name']}: ready={ready}, expires={expiration_days}"
+                    (
+                        f"Cert {cert['metadata']['namespace']}/{cert['metadata']['name']}: "
+                        f"ready={ready}, expires={expiration_days}"
+                    )
                 )
 
                 result.append(
