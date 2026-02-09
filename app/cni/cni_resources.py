@@ -345,8 +345,7 @@ class CniResources:
                                                 f"IPPool {pool_name} CIDR {cidr}"
                                             ),
                                             "remediation": (
-                                                f"Adjust CIDRs for {res_name} to be fully contained in "
-                                                "the IPPool."
+                                                f"Adjust CIDRs for {res_name} to be fully contained in the IPPool."
                                             ),
                                         }
                                     )
