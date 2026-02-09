@@ -8,7 +8,7 @@ RUN pip install pipenv
 
 # Copy Pipfiles and generate requirements.txt
 COPY app/Pipfile app/Pipfile.lock ./
-RUN pipenv lock -r > requirements.txt
+RUN pipenv requirements > requirements.txt
 
 # Install dependencies from the generated file
 RUN pip install -r requirements.txt

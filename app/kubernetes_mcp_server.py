@@ -7,12 +7,12 @@ It exposes various tools to query cluster status, resources, and logs.
 
 import argparse
 import logging
-import os
 import sys
 from typing import Optional
 
 from certificates.certificates import CertificateResources
 from cni.cni_resources import CniResources
+from config import settings
 from core.core_resources import CoreResources
 from logs.logs import LogResources
 from metrics.metrics import MetricsResources
@@ -204,7 +204,7 @@ def register_mcp_tools(server: KubernetesMCPServer):
         """Inspect Whereabouts CNI for IP address management issues."""
         return server.cni_resources.inspect_whereabouts_networking()
 
-from config import settings
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Kubernetes MCP Server")

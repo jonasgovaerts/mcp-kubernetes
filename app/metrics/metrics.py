@@ -20,7 +20,9 @@ class MetricsResources:
 
             result = []
             for metric in metrics.get("items", []):
-                logger.debug(f"Node {metric['metadata']['name']}: cpu={metric['usage']['cpu']}, mem={metric['usage']['memory']}")
+                logger.debug(
+                    f"Node {metric['metadata']['name']}: cpu={metric['usage']['cpu']}, mem={metric['usage']['memory']}"
+                )
                 result.append(
                     {
                         "name": metric["metadata"]["name"],
