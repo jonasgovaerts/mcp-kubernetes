@@ -1,6 +1,7 @@
-from typing import Optional, List, Dict, Any
 import logging
+from typing import Any, Dict, List, Optional
 
+from kubernetes.client.rest import ApiException
 from utils.helpers import calculate_age
 
 logger = logging.getLogger(__name__)
@@ -28,14 +29,19 @@ class NetworkingResources:
                         # noqa: E501
                         rules.append({"host": host, "paths": paths})
 
-                result.append({
-                    "name": ing.metadata.name,
-                    "namespace": ing.metadata.namespace,
-                    "rules": rules,
-                    "age": calculate_age(ing.metadata.creation_timestamp)
-                })
+                result.append(
+                    {
+                        "name": ing.metadata.name,
+                        "namespace": ing.metadata.namespace,
+                        "rules": rules,
+                        "age": calculate_age(ing.metadata.creation_timestamp),
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting ingresses: {e}", exc_info=True)
             return []

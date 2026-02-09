@@ -3,11 +3,15 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first (for better caching)
-COPY app/requirements .
+# Install pipenv to generate requirements.txt
+RUN pip install pipenv
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements
+# Copy Pipfiles and generate requirements.txt
+COPY app/Pipfile app/Pipfile.lock ./
+RUN pipenv lock -r > requirements.txt
+
+# Install dependencies from the generated file
+RUN pip install -r requirements.txt
 
 # Copy application code
 COPY app/ .

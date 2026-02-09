@@ -9,5 +9,3 @@ This package contains methods for managing Kubernetes workload resources includi
 - Jobs
 - CronJobs
 """
-
-from .workloads import Workloads

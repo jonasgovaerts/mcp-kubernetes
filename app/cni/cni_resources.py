@@ -1,9 +1,18 @@
-from typing import Optional, List, Dict, Any
 import ipaddress
 import logging
+from typing import Any, Dict, List, Optional
 
-from utils.helpers import calculate_age, parse_cidr, is_cidr_invalid, is_cidr_exhausted, cidrs_overlap, \
-    cidr_contains, is_reservation_stale, calculate_cidr_utilization
+from kubernetes.client.rest import ApiException
+from utils.helpers import (
+    calculate_age,
+    calculate_cidr_utilization,
+    cidr_contains,
+    cidrs_overlap,
+    is_cidr_exhausted,
+    is_cidr_invalid,
+    is_reservation_stale,
+    parse_cidr,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +29,11 @@ class CniResources:
 
             if namespace:
                 nads = self.custom_objects_api.list_namespaced_custom_object(
-                    group="k8s.cni.cncf.io",
-                    version="v1",
-                    plural="network-attachment-definitions",
-                    namespace=namespace
+                    group="k8s.cni.cncf.io", version="v1", plural="network-attachment-definitions", namespace=namespace
                 )
             else:
                 nads = self.custom_objects_api.list_cluster_custom_object(
-                    group="k8s.cni.cncf.io",
-                    version="v1",
-                    plural="network-attachment-definitions"
+                    group="k8s.cni.cncf.io", version="v1", plural="network-attachment-definitions"
                 )
 
             result = []
@@ -38,15 +42,20 @@ class CniResources:
 
                 logger.info(f"NAD {nad['metadata']['namespace']}/{nad['metadata']['name']}")
 
-                result.append({
-                    "name": nad["metadata"]["name"],
-                    "namespace": nad["metadata"]["namespace"],
-                    "config": config,
-                    "age": calculate_age(nad["metadata"]["creationTimestamp"])
-                })
+                result.append(
+                    {
+                        "name": nad["metadata"]["name"],
+                        "namespace": nad["metadata"]["namespace"],
+                        "config": config,
+                        "age": calculate_age(nad["metadata"]["creationTimestamp"]),
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} network attachment definitions")
             return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting network attachment definitions: {e}", exc_info=True)
             return []
@@ -56,9 +65,7 @@ class CniResources:
         try:
             logger.info("Fetching IPPool resources from Whereabouts CNI...")
             ippools = self.custom_objects_api.list_cluster_custom_object(
-                group="whereabouts.cni.cncf.io",
-                version="v1alpha1",
-                plural="ippools"
+                group="whereabouts.cni.cncf.io", version="v1alpha1", plural="ippools"
             )
 
             result = []
@@ -80,19 +87,24 @@ class CniResources:
 
                 logger.debug(f"IPPool {ippool['metadata']['name']}: {len(parsed_cidrs)} CIDRs, allocated={allocated}")
 
-                result.append({
-                    "name": ippool["metadata"]["name"],
-                    "namespace": ippool["metadata"]["namespace"],
-                    "cidrs": parsed_cidrs,
-                    "gateway": spec.get("gateway", "N/A"),
-                    "nat_outgoing": spec.get("natOutgoing", True),
-                    "allocated_ips": allocated,
-                    "age": calculate_age(ippool["metadata"]["creationTimestamp"]),
-                    "labels": ippool["metadata"].get("labels", {})
-                })
+                result.append(
+                    {
+                        "name": ippool["metadata"]["name"],
+                        "namespace": ippool["metadata"]["namespace"],
+                        "cidrs": parsed_cidrs,
+                        "gateway": spec.get("gateway", "N/A"),
+                        "nat_outgoing": spec.get("natOutgoing", True),
+                        "allocated_ips": allocated,
+                        "age": calculate_age(ippool["metadata"]["creationTimestamp"]),
+                        "labels": ippool["metadata"].get("labels", {}),
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} IPPools")
             return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting IPPools: {e}", exc_info=True)
             return []
@@ -102,9 +114,7 @@ class CniResources:
         try:
             logger.info("Fetching OverlappingRangeIPReservation resources from Whereabouts CNI...")
             reservations = self.custom_objects_api.list_cluster_custom_object(
-                group="whereabouts.cni.cncf.io",
-                version="v1alpha1",
-                plural="overlappingrangeipreservations"
+                group="whereabouts.cni.cncf.io", version="v1alpha1", plural="overlappingrangeipreservations"
             )
 
             result = []
@@ -124,19 +134,24 @@ class CniResources:
 
                 logger.debug(f"OverlappingRangeIPReservation {reservation['metadata']['name']}: CIDR={parsed_cidr}")
 
-                result.append({
-                    "name": reservation["metadata"]["name"],
-                    "namespace": reservation["metadata"]["namespace"],
-                    "cidr": parsed_cidr,
-                    "gateway": spec.get("gateway", "N/A"),
-                    "nat_outgoing": spec.get("natOutgoing", True),
-                    "allocated_ips": allocated,
-                    "age": calculate_age(reservation["metadata"]["creationTimestamp"]),
-                    "labels": reservation["metadata"].get("labels", {})
-                })
+                result.append(
+                    {
+                        "name": reservation["metadata"]["name"],
+                        "namespace": reservation["metadata"]["namespace"],
+                        "cidr": parsed_cidr,
+                        "gateway": spec.get("gateway", "N/A"),
+                        "nat_outgoing": spec.get("natOutgoing", True),
+                        "allocated_ips": allocated,
+                        "age": calculate_age(reservation["metadata"]["creationTimestamp"]),
+                        "labels": reservation["metadata"].get("labels", {}),
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} OverlappingRangeIPReservations")
             return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting OverlappingRangeIPReservations: {e}", exc_info=True)
             return []
@@ -167,11 +182,11 @@ class CniResources:
                     "total_ippools": len(ippools),
                     "total_reservations": len(reservations),
                     "issues_found": 0,
-                    "severity_counts": {"critical": 0, "high": 0, "medium": 0, "low": 0}
+                    "severity_counts": {"critical": 0, "high": 0, "medium": 0, "low": 0},
                 },
                 "issues": [],
                 "ippools": ippools,
-                "reservations": reservations
+                "reservations": reservations,
             }
 
             # Analyze each IPPool for issues
@@ -182,15 +197,17 @@ class CniResources:
                 # Check for invalid CIDRs
                 for cidr in ippool.get("cidrs", []):
                     if is_cidr_invalid(cidr):
-                        report["issues"].append({
-                            "severity": "high",
-                            "type": "invalid_cidr",
-                            "resource_type": "IPPool",
-                            "resource_name": pool_name,
-                            "namespace": namespace,
-                            "message": f"IPPool {pool_name} has invalid CIDR: {cidr}",
-                            "remediation": f"Fix the CIDR configuration for IPPool {pool_name}. Valid examples: 10.244.0.0/24, 192.168.1.0/25"
-                        })
+                        report["issues"].append(
+                            {
+                                "severity": "high",
+                                "type": "invalid_cidr",
+                                "resource_type": "IPPool",
+                                "resource_name": pool_name,
+                                "namespace": namespace,
+                                "message": f"IPPool {pool_name} has invalid CIDR: {cidr}",
+                                "remediation": f"Fix the CIDR for IPPool {pool_name}. e.g., 10.244.0.0/24",
+                            }
+                        )
 
                 # Check for exhausted CIDRs
                 allocated_ips = ippool.get("allocated_ips", {})
@@ -199,15 +216,17 @@ class CniResources:
                         parsed_cidr = parse_cidr(cidr)
                         if parsed_cidr and is_cidr_exhausted(parsed_cidr, allocated_ips):
                             utilization = calculate_cidr_utilization(parsed_cidr, allocated_ips)
-                            report["issues"].append({
-                                "severity": "critical",
-                                "type": "exhausted_cidr",
-                                "resource_type": "IPPool",
-                                "resource_name": pool_name,
-                                "namespace": namespace,
-                                "message": f"IPPool {pool_name} CIDR {cidr} is exhausted ({utilization['utilization_percent']}% utilized)",
-                                "remediation": f"Add more CIDR ranges to IPPool {pool_name} or increase the prefix length (e.g., from /24 to /23)"
-                            })
+                            report["issues"].append(
+                                {
+                                    "severity": "critical",
+                                    "type": "exhausted_cidr",
+                                    "resource_type": "IPPool",
+                                    "resource_name": pool_name,
+                                    "namespace": namespace,
+                                    "message": f"IPPool {pool_name} CIDR {cidr} is exhausted ({utilization['utilization_percent']}% utilized)",
+                                    "remediation": f"Add more CIDRs to IPPool {pool_name} or expand the prefix.",
+                                }
+                            )
 
                 # Check for overlapping CIDRs within the same IPPool
                 cidrs = [c for c in ippool.get("cidrs", []) if not is_cidr_invalid(c)]
@@ -216,15 +235,17 @@ class CniResources:
                         cidr1 = parse_cidr(cidrs[i])
                         cidr2 = parse_cidr(cidrs[j])
                         if cidr1 and cidr2 and cidrs_overlap(cidr1, cidr2):
-                            report["issues"].append({
-                                "severity": "high",
-                                "type": "overlapping_cidrs_same_pool",
-                                "resource_type": "IPPool",
-                                "resource_name": pool_name,
-                                "namespace": namespace,
-                                "message": f"IPPool {pool_name} has overlapping CIDRs: {cidrs[i]} and {cidrs[j]}",
-                                "remediation": f"Remove overlapping CIDR {cidrs[j]} from IPPool {pool_name} or adjust the ranges"
-                            })
+                            report["issues"].append(
+                                {
+                                    "severity": "high",
+                                    "type": "overlapping_cidrs_same_pool",
+                                    "resource_type": "IPPool",
+                                    "resource_name": pool_name,
+                                    "namespace": namespace,
+                                    "message": f"IPPool {pool_name} has overlapping CIDRs: {cidrs[i]} and {cidrs[j]}",
+                                    "remediation": f"Remove overlapping CIDR {cidrs[j]} from IPPool {pool_name}.",
+                                }
+                            )
 
             # Analyze reservations for issues
             for reservation in reservations:
@@ -234,27 +255,31 @@ class CniResources:
                 # Check for invalid CIDR
                 cidr = reservation.get("cidr", "")
                 if is_cidr_invalid(cidr):
-                    report["issues"].append({
-                        "severity": "high",
-                        "type": "invalid_reservation_cidr",
-                        "resource_type": "OverlappingRangeIPReservation",
-                        "resource_name": res_name,
-                        "namespace": namespace,
-                        "message": f"OverlappingRangeIPReservation {res_name} has invalid CIDR: {cidr}",
-                        "remediation": f"Fix the CIDR configuration for OverlappingRangeIPReservation {res_name}"
-                    })
+                    report["issues"].append(
+                        {
+                            "severity": "high",
+                            "type": "invalid_reservation_cidr",
+                            "resource_type": "OverlappingRangeIPReservation",
+                            "resource_name": res_name,
+                            "namespace": namespace,
+                            "message": f"OverlappingRangeIPReservation {res_name} has invalid CIDR: {cidr}",
+                            "remediation": f"Fix the CIDR for OverlappingRangeIPReservation {res_name}",
+                        }
+                    )
 
                 # Check for stale reservations
                 if is_reservation_stale(reservation):
-                    report["issues"].append({
-                        "severity": "medium",
-                        "type": "stale_reservation",
-                        "resource_type": "OverlappingRangeIPReservation",
-                        "resource_name": res_name,
-                        "namespace": namespace,
-                        "message": f"OverlappingRangeIPReservation {res_name} appears to be stale (age: {reservation.get('age', 'unknown')})",
-                        "remediation": f"Investigate and remove stale OverlappingRangeIPReservation {res_name} if no longer needed"
-                    })
+                    report["issues"].append(
+                        {
+                            "severity": "medium",
+                            "type": "stale_reservation",
+                            "resource_type": "OverlappingRangeIPReservation",
+                            "resource_name": res_name,
+                            "namespace": namespace,
+                            "message": f"OverlappingRangeIPReservation {res_name} is stale (age: {reservation.get('age', 'unknown')})",
+                            "remediation": f"Investigate and remove stale OverlappingRangeIPReservation {res_name}",
+                        }
+                    )
 
             # Check for overlaps between IPPools and reservations
             for ippool in ippools:
@@ -286,26 +311,30 @@ class CniResources:
                             if cidrs_overlap(parsed_pool_cidr, parsed_res_cidr):
                                 # Check if the reservation's CIDR is contained within the pool
                                 if cidr_contains(parsed_pool_cidr, parsed_res_cidr):
-                                    report["issues"].append({
-                                        "severity": "low",
-                                        "type": "reservation_within_pool",
-                                        "resource_type": "OverlappingRangeIPReservation",
-                                        "resource_name": res_name,
-                                        "namespace": namespace,
-                                        "message": f"OverlappingRangeIPReservation {res_name} CIDR {res_cidr} is contained within IPPool {pool_name} CIDR {cidr}",
-                                        "remediation": f"Verify that OverlappingRangeIPReservation {res_name} is intentionally contained within IPPool {pool_name}"
-                                    })
+                                    report["issues"].append(
+                                        {
+                                            "severity": "low",
+                                            "type": "reservation_within_pool",
+                                            "resource_type": "OverlappingRangeIPReservation",
+                                            "resource_name": res_name,
+                                            "namespace": namespace,
+                                            "message": f"Reservation {res_name} CIDR {res_cidr} is in IPPool {pool_name} CIDR {cidr}",
+                                            "remediation": f"Verify this overlap for {res_name} is intentional.",
+                                        }
+                                    )
                                 else:
                                     # Unprotected overlap - this is a critical issue
-                                    report["issues"].append({
-                                        "severity": "critical",
-                                        "type": "unprotected_overlap",
-                                        "resource_type": "OverlappingRangeIPReservation",
-                                        "resource_name": res_name,
-                                        "namespace": namespace,
-                                        "message": f"OverlappingRangeIPReservation {res_name} CIDR {res_cidr} overlaps with IPPool {pool_name} CIDR {cidr} but is not contained within it",
-                                        "remediation": f"Adjust the CIDR ranges so that OverlappingRangeIPReservation {res_name} is either fully contained within IPPool {pool_name} or does not overlap at all"
-                                    })
+                                    report["issues"].append(
+                                        {
+                                            "severity": "critical",
+                                            "type": "unprotected_overlap",
+                                            "resource_type": "OverlappingRangeIPReservation",
+                                            "resource_name": res_name,
+                                            "namespace": namespace,
+                                            "message": f"Reservation {res_name} CIDR {res_cidr} overlaps with IPPool {pool_name} CIDR {cidr}",
+                                            "remediation": f"Adjust CIDRs for {res_name} to be fully contained in the IPPool.",
+                                        }
+                                    )
 
             # Count severity levels
             for issue in report["issues"]:
@@ -320,6 +349,9 @@ class CniResources:
 
             logger.info(f"Inspection complete: {len(report['issues'])} issues found")
             return report
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error during Whereabouts CNI inspection: {e}", exc_info=True)
             return {"error": str(e), "issues": []}

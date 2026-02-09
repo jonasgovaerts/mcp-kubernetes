@@ -1,5 +1,5 @@
-from typing import Optional, List, Dict, Any
 import ipaddress
+from typing import Any, Dict, List, Optional
 
 
 def is_node_ready(node) -> bool:
@@ -15,7 +15,7 @@ def get_node_roles(node) -> List[str]:
     label_key = "node-role.kubernetes.io/"
     roles = []
 
-    if hasattr(node, 'metadata') and hasattr(node.metadata, 'labels'):
+    if hasattr(node, "metadata") and hasattr(node.metadata, "labels"):
         for key, value in node.metadata.labels.items():
             if key.startswith(label_key):
                 roles.append(value)
@@ -38,15 +38,16 @@ def get_pod_status(pod) -> str:
     # Check for specific conditions
     if pod.status.phase == "Running":
         if any(
-                hasattr(container, 'status') and hasattr(container.status, 'waiting') and
-                container.status.waiting and container.status.waiting.reason == "CrashLoopBackOff"
-                for container in (pod.status.container_statuses or [])
+            hasattr(container, "status")
+            and hasattr(container.status, "waiting")
+            and container.status.waiting
+            and container.status.waiting.reason == "CrashLoopBackOff"
+            for container in (pod.status.container_statuses or [])
         ):
             return "CrashLoopBackOff"
         elif any(
-                hasattr(container, 'status') and hasattr(container.status, 'waiting') and
-                container.status.waiting
-                for container in (pod.status.container_statuses or [])
+            hasattr(container, "status") and hasattr(container.status, "waiting") and container.status.waiting
+            for container in (pod.status.container_statuses or [])
         ):
             return "Waiting"
 
@@ -65,7 +66,8 @@ def calculate_age(timestamp) -> str:
     try:
         # Simple age calculation (could be more precise)
         from datetime import datetime
-        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
+
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00").replace("+00:00", ""))
         now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
         delta = now - dt
 
@@ -91,7 +93,8 @@ def format_timestamp(timestamp) -> str:
         return "N/A"
     try:
         from datetime import datetime
-        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00').replace('+00:00', ''))
+
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00").replace("+00:00", ""))
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
         return timestamp if timestamp else "N/A"
@@ -103,8 +106,9 @@ def calculate_certificate_expiration(not_after: str) -> Optional[str]:
         return None
     try:
         from datetime import datetime
+
         # Parse the RFC3339 timestamp
-        dt = datetime.fromisoformat(not_after.replace('Z', '+00:00').replace('+00:00', ''))
+        dt = datetime.fromisoformat(not_after.replace("Z", "+00:00").replace("+00:00", ""))
         now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
         delta = dt - now
 
@@ -161,7 +165,7 @@ def calculate_cidr_utilization(cidr: ipaddress.IPv4Network, allocated_ips: Dict[
         "total_ips": total_ips,
         "usable_ips": usable_ips,
         "allocated_ips": allocated_count,
-        "utilization_percent": round(utilization, 2)
+        "utilization_percent": round(utilization, 2),
     }
 
 
@@ -182,8 +186,7 @@ def is_reservation_stale(reservation: Dict[str, Any], ippool: Optional[Dict[str,
     if ippool:
         # Simple check: if IPPool is exhausted, reservation might be stale
         for cidr in ippool.get("cidrs", []):
-            if not is_cidr_invalid(cidr) and is_cidr_exhausted(parse_cidr(cidr),
-                                                                        ippool.get("allocated_ips", {})):
+            if not is_cidr_invalid(cidr) and is_cidr_exhausted(parse_cidr(cidr), ippool.get("allocated_ips", {})):
                 return True
 
     # Check age - reservations older than 1 day might be stale

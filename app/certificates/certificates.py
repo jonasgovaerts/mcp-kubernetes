@@ -1,7 +1,8 @@
-from typing import Optional, List, Dict, Any
 import logging
+from typing import Any, Dict, List, Optional
 
-from utils.helpers import calculate_certificate_expiration, calculate_age
+from kubernetes.client.rest import ApiException
+from utils.helpers import calculate_age, calculate_certificate_expiration
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +19,11 @@ class CertificateResources:
 
             if namespace:
                 certificates = self.custom_objects_api.list_namespaced_custom_object(
-                    group="cert-manager.io",
-                    version="v1",
-                    plural="certificates",
-                    namespace=namespace
+                    group="cert-manager.io", version="v1", plural="certificates", namespace=namespace
                 )
             else:
                 certificates = self.custom_objects_api.list_cluster_custom_object(
-                    group="cert-manager.io",
-                    version="v1",
-                    plural="certificates"
+                    group="cert-manager.io", version="v1", plural="certificates"
                 )
 
             result = []
@@ -51,24 +47,30 @@ class CertificateResources:
                 expiration_days = calculate_certificate_expiration(not_after)
 
                 logger.debug(
-                    f"Certificate {cert['metadata']['namespace']}/{cert['metadata']['name']}: ready={ready}, expires={expiration_days}")
+                    f"Cert {cert['metadata']['namespace']}/{cert['metadata']['name']}: ready={ready}, expires={expiration_days}"
+                )
 
-                result.append({
-                    "name": cert["metadata"]["name"],
-                    "namespace": cert["metadata"]["namespace"],
-                    "ready": ready,
-                    "reason": reason,
-                    "message": message,
-                    "issuer": cert.get("spec", {}).get("issuerRef", {}).get("name", "N/A"),
-                    "secret_name": cert.get("spec", {}).get("secretName", "N/A"),
-                    "duration": cert.get("spec", {}).get("duration", "N/A"),
-                    "not_after": not_after,
-                    "expiration_days": expiration_days,
-                    "age": calculate_age(cert["metadata"]["creationTimestamp"])
-                })
+                result.append(
+                    {
+                        "name": cert["metadata"]["name"],
+                        "namespace": cert["metadata"]["namespace"],
+                        "ready": ready,
+                        "reason": reason,
+                        "message": message,
+                        "issuer": cert.get("spec", {}).get("issuerRef", {}).get("name", "N/A"),
+                        "secret_name": cert.get("spec", {}).get("secretName", "N/A"),
+                        "duration": cert.get("spec", {}).get("duration", "N/A"),
+                        "not_after": not_after,
+                        "expiration_days": expiration_days,
+                        "age": calculate_age(cert["metadata"]["creationTimestamp"]),
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} certificates")
             return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting certificates: {e}", exc_info=True)
             return []

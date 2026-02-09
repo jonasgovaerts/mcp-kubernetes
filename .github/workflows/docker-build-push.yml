@@ -24,6 +24,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        run: pipenv install --dev
+        working-directory: ./app
+
+      - name: Check formatting
+        run: pipenv run ruff format . --check
+        working-directory: ./app
+
+      - name: Lint code
+        run: pipenv run ruff check .
+        working-directory: ./app
+
+      - name: Security scan
+        run: pipenv check
+        working-directory: ./app
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

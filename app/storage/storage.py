@@ -1,6 +1,7 @@
-from typing import Optional, List, Dict, Any
 import logging
+from typing import Any, Dict, List, Optional
 
+from kubernetes.client.rest import ApiException
 from utils.helpers import calculate_age
 
 logger = logging.getLogger(__name__)
@@ -24,20 +25,26 @@ class StorageResources:
                 # noqa: E501
 
                 logger.debug(
-                    f"PV {pv.metadata.name}: status={pv.status.phase if pv.status else 'Pending'}, capacity={capacity}")
+                    f"PV {pv.metadata.name}: status={pv.status.phase if pv.status else 'Pending'}, capacity={capacity}"
+                )
 
-                result.append({
-                    "name": pv.metadata.name,
-                    "status": pv.status.phase if pv.status else "Pending",
-                    "capacity": capacity,
-                    "storage_class": storage_class,
-                    "access_modes": pv.spec.access_modes if pv.spec and pv.spec.access_modes else [],  # noqa: E501
-                    "age": calculate_age(pv.metadata.creation_timestamp),
-                    "reclaim_policy": pv.spec.persistent_volume_reclaim_policy if pv.spec else "Retain"  # noqa: E501
-                })
+                result.append(
+                    {
+                        "name": pv.metadata.name,
+                        "status": pv.status.phase if pv.status else "Pending",
+                        "capacity": capacity,
+                        "storage_class": storage_class,
+                        "access_modes": pv.spec.access_modes if pv.spec and pv.spec.access_modes else [],  # noqa: E501
+                        "age": calculate_age(pv.metadata.creation_timestamp),
+                        "reclaim_policy": pv.spec.persistent_volume_reclaim_policy if pv.spec else "Retain",  # noqa: E501
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} persistent volumes")
             return sorted(result, key=lambda x: x["name"])
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting persistent volumes: {e}", exc_info=True)
             return []
@@ -57,31 +64,46 @@ class StorageResources:
 
             result = []
             for pvc in pvcs:
-                status = "Bound" if pvc.status and pvc.status.phase == "Bound" else pvc.status.phase if pvc.status else "Pending"  # noqa: E501
+                status = (
+                    "Bound"
+                    if pvc.status and pvc.status.phase == "Bound"
+                    else pvc.status.phase
+                    if pvc.status
+                    else "Pending"
+                )  # noqa: E501
 
-                request_size = pvc.spec.resources.requests.get("storage",
-                                                               "Unknown") if pvc.spec and pvc.spec.resources and pvc.spec.resources.requests else "Unknown"  # noqa: E501
+                request_size = (
+                    pvc.spec.resources.requests.get("storage", "Unknown")
+                    if pvc.spec and pvc.spec.resources and pvc.spec.resources.requests
+                    else "Unknown"
+                )  # noqa: E501
 
                 used_size = "N/A"
-                if pvc.status and hasattr(pvc.status, 'capacity') and pvc.status.capacity:  # noqa: E501
+                if pvc.status and hasattr(pvc.status, "capacity") and pvc.status.capacity:  # noqa: E501
                     used_size = pvc.status.capacity.get("storage", "N/A")
 
                 logger.debug(
-                    f"PVC {pvc.metadata.namespace}/{pvc.metadata.name}: status={status}, requested={request_size}")
+                    f"PVC {pvc.metadata.namespace}/{pvc.metadata.name}: status={status}, requested={request_size}"
+                )
 
-                result.append({
-                    "name": pvc.metadata.name,
-                    "namespace": pvc.metadata.namespace,
-                    "status": status,
-                    "volume": pvc.spec.volume_name if pvc.spec else "N/A",
-                    "storage_class": pvc.spec.storage_class_name if pvc.spec else "default",  # noqa: E501
-                    "requested_size": request_size,
-                    "used_size": used_size,
-                    "age": calculate_age(pvc.metadata.creation_timestamp)
-                })
+                result.append(
+                    {
+                        "name": pvc.metadata.name,
+                        "namespace": pvc.metadata.namespace,
+                        "status": status,
+                        "volume": pvc.spec.volume_name if pvc.spec else "N/A",
+                        "storage_class": pvc.spec.storage_class_name if pvc.spec else "default",  # noqa: E501
+                        "requested_size": request_size,
+                        "used_size": used_size,
+                        "age": calculate_age(pvc.metadata.creation_timestamp),
+                    }
+                )
 
             logger.info(f"Successfully retrieved {len(result)} persistent volume claims")
             return sorted(result, key=lambda x: (x["namespace"], x["name"]))
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting persistent volume claims: {e}", exc_info=True)
             return []

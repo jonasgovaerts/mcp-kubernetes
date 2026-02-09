@@ -4,29 +4,30 @@ Kubernetes MCP Server - Cluster Inspection Tool
 This module provides a FastMCP server for inspecting Kubernetes clusters.
 It exposes various tools to query cluster status, resources, and logs.
 """
+
 import argparse
-import sys
 import logging
+import os
+import sys
 from typing import Optional
 
-# Configure logging
 from certificates.certificates import CertificateResources
 from cni.cni_resources import CniResources
 from core.core_resources import CoreResources
 from logs.logs import LogResources
 from metrics.metrics import MetricsResources
 from networking.networking import NetworkingResources
+from pythonjsonlogger import jsonlogger
 from storage.storage import StorageResources
 from workloads.workloads import Workloads
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Configure logging
+logger = logging.getLogger()
+logHandler = logging.StreamHandler(sys.stdout)
+formatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+logger.setLevel(logging.INFO)
 
 try:
     from kubernetes import client, config
@@ -180,7 +181,7 @@ def register_mcp_tools(server: KubernetesMCPServer):
 
     @server.mcp.tool
     def list_persistent_volume_claims(namespace: Optional[str] = None):
-        """List persistent volume claims with their status, requested size, and used storage. Optionally filter by namespace."""
+        """List persistent volume claims with their status, requested size, and used storage."""
         return server.storage_resources.get_persistent_volume_claims(namespace)
 
     @server.mcp.tool
@@ -203,21 +204,22 @@ def register_mcp_tools(server: KubernetesMCPServer):
         """Inspect Whereabouts CNI for IP address management issues."""
         return server.cni_resources.inspect_whereabouts_networking()
 
+from config import settings
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Kubernetes MCP Server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8000, help="Port to listen on")
     parser.add_argument("--kubeconfig", help="Path to kubeconfig file")
     args = parser.parse_args()
 
-    server = KubernetesMCPServer(kubeconfig_path=args.kubeconfig)
+    kubeconfig_path = args.kubeconfig or settings.KUBECONFIG
+
+    server = KubernetesMCPServer(kubeconfig_path=kubeconfig_path)
     if not server.initialize():
         print("Failed to initialize Kubernetes client", file=sys.stderr)
         sys.exit(1)
 
     register_mcp_tools(server)
-    print(f"\nStarting Kubernetes MCP Server on {args.host}:{args.port}/mcp")
+    print(f"\nStarting Kubernetes MCP Server on {settings.HOST}:{settings.PORT}/mcp")
     print("Use this URL in your MCP client configuration:")
-    print(f"  http://{args.host}:{args.port}/mcp")
-    server.mcp.run(transport="streamable-http", host=args.host, port=args.port)
+    print(f"  http://{settings.HOST}:{settings.PORT}/mcp")
+    server.mcp.run(transport="streamable-http", host=settings.HOST, port=settings.PORT)

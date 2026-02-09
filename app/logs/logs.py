@@ -1,5 +1,7 @@
-from typing import Optional
 import logging
+from typing import Optional
+
+from kubernetes.client.rest import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +35,14 @@ class LogResources:
 
             logger.info(f"Reading {tail_lines} lines from pod logs...")
             log = self.core_api.read_namespaced_pod_log(
-                pod_name,
-                namespace,
-                tail_lines=tail_lines,
-                _preload_content=False
+                pod_name, namespace, tail_lines=tail_lines, _preload_content=False
             )
 
             logger.info("Successfully retrieved pod logs")
-            return log.data.decode('utf-8')
+            return log.data.decode("utf-8")
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             error_msg = f"Error getting logs: {str(e)}"
             logger.error(error_msg, exc_info=True)

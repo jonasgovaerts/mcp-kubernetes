@@ -3,9 +3,14 @@ requests = "*"
 ujson = "*"
 kubernetes = "*"
 fastmcp = "*"
+python-json-logger = "*"
+pydantic = "*"
+pydantic-settings = "*"
+python-dotenv = "*"
 
 [requires]
 python_version = "3.12"
 
 [dev-packages]
 pytest = "*"
+ruff = "*"

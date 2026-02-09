@@ -1,6 +1,7 @@
-from typing import Optional, List, Dict, Any
 import logging
+from typing import Any, Dict, List, Optional
 
+from kubernetes.client.rest import ApiException
 from utils.helpers import calculate_age
 
 logger = logging.getLogger(__name__)
@@ -21,19 +22,26 @@ class Workloads:
 
             result = []
             for dep in deployments:
-                result.append({
-                    "name": dep.metadata.name,
-                    "namespace": dep.metadata.namespace,
-                    "replicas": dep.spec.replicas if dep.spec else 0,
-                    "available_replicas": dep.status.available_replicas if dep.status else 0,
-                    "desired_replicas": dep.status.replicas if dep.status and dep.status.replicas is not None else 0,
-                    # noqa: E501
-                    "age": calculate_age(dep.metadata.creation_timestamp),
-                    "strategy": dep.spec.strategy.type if dep.spec and dep.spec.strategy else "RollingUpdate"
-                    # noqa: E501
-                })
+                result.append(
+                    {
+                        "name": dep.metadata.name,
+                        "namespace": dep.metadata.namespace,
+                        "replicas": dep.spec.replicas if dep.spec else 0,
+                        "available_replicas": dep.status.available_replicas if dep.status else 0,
+                        "desired_replicas": dep.status.replicas
+                        if dep.status and dep.status.replicas is not None
+                        else 0,
+                        # noqa: E501
+                        "age": calculate_age(dep.metadata.creation_timestamp),
+                        "strategy": dep.spec.strategy.type if dep.spec and dep.spec.strategy else "RollingUpdate",
+                        # noqa: E501
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting deployments: {e}", exc_info=True)
             return []
@@ -48,15 +56,20 @@ class Workloads:
 
             result = []
             for ss in statefulsets:
-                result.append({
-                    "name": ss.metadata.name,
-                    "namespace": ss.metadata.namespace,
-                    "replicas": ss.spec.replicas if ss.spec else 0,
-                    "ready_replicas": ss.status.ready_replicas if ss.status else 0,
-                    "age": calculate_age(ss.metadata.creation_timestamp)
-                })
+                result.append(
+                    {
+                        "name": ss.metadata.name,
+                        "namespace": ss.metadata.namespace,
+                        "replicas": ss.spec.replicas if ss.spec else 0,
+                        "ready_replicas": ss.status.ready_replicas if ss.status else 0,
+                        "age": calculate_age(ss.metadata.creation_timestamp),
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting statefulsets: {e}", exc_info=True)
             return []
@@ -71,16 +84,21 @@ class Workloads:
 
             result = []
             for ds in daemonsets:
-                result.append({
-                    "name": ds.metadata.name,
-                    "namespace": ds.metadata.namespace,
-                    "desired": ds.status.desired_number_scheduled if ds.status else 0,
-                    "current": ds.status.current_number_scheduled if ds.status else 0,
-                    "ready": ds.status.number_ready if ds.status else 0,
-                    "age": calculate_age(ds.metadata.creation_timestamp)
-                })
+                result.append(
+                    {
+                        "name": ds.metadata.name,
+                        "namespace": ds.metadata.namespace,
+                        "desired": ds.status.desired_number_scheduled if ds.status else 0,
+                        "current": ds.status.current_number_scheduled if ds.status else 0,
+                        "ready": ds.status.number_ready if ds.status else 0,
+                        "age": calculate_age(ds.metadata.creation_timestamp),
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting daemonsets: {e}", exc_info=True)
             return []
@@ -95,16 +113,21 @@ class Workloads:
 
             result = []
             for job in jobs:
-                result.append({
-                    "name": job.metadata.name,
-                    "namespace": job.metadata.namespace,
-                    "completions": job.spec.completions if job.spec else 0,
-                    "parallelism": job.spec.parallelism if job.spec else 1,
-                    "age": calculate_age(job.metadata.creation_timestamp),
-                    "status": "Completed" if job.status and job.status.succeeded else "Running"  # noqa: E501
-                })
+                result.append(
+                    {
+                        "name": job.metadata.name,
+                        "namespace": job.metadata.namespace,
+                        "completions": job.spec.completions if job.spec else 0,
+                        "parallelism": job.spec.parallelism if job.spec else 1,
+                        "age": calculate_age(job.metadata.creation_timestamp),
+                        "status": "Completed" if job.status and job.status.succeeded else "Running",  # noqa: E501
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting jobs: {e}", exc_info=True)
             return []
@@ -119,15 +142,20 @@ class Workloads:
 
             result = []
             for cj in cronjobs:
-                result.append({
-                    "name": cj.metadata.name,
-                    "namespace": cj.metadata.namespace,
-                    "schedule": cj.spec.schedule if cj.spec else "N/A",
-                    "suspend": cj.spec.suspend if cj.spec else False,
-                    "age": calculate_age(cj.metadata.creation_timestamp)
-                })
+                result.append(
+                    {
+                        "name": cj.metadata.name,
+                        "namespace": cj.metadata.namespace,
+                        "schedule": cj.spec.schedule if cj.spec else "N/A",
+                        "suspend": cj.spec.suspend if cj.spec else False,
+                        "age": calculate_age(cj.metadata.creation_timestamp),
+                    }
+                )
 
             return result
+        except ApiException as e:
+            logger.error(f"Kubernetes API error in {__name__}: {e.status} - {e.reason}", exc_info=True)
+            return {"error": f"API Error: {e.reason}"}
         except Exception as e:
             logger.error(f"Error getting cronjobs: {e}", exc_info=True)
             return []
