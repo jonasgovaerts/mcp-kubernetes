@@ -218,7 +218,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     register_mcp_tools(server)
-    print(f"\nStarting Kubernetes MCP Server on {settings.HOST}:{settings.PORT}/mcp")
+    print(f"\nStarting Kubernetes MCP Server on {settings.HOST}:{settings.PORT}")
     print("Use this URL in your MCP client configuration:")
-    print(f"  http://{settings.HOST}:{settings.PORT}/mcp")
-    server.mcp.run(transport="streamable-http", host=settings.HOST, port=settings.PORT)
+    print(f"  http://{settings.HOST}:{settings.PORT}/sse")
+    server.mcp.run(transport="sse", host=settings.HOST, port=settings.PORT)
